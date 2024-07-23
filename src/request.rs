@@ -4,6 +4,7 @@ use std::{
     net::TcpStream,
 };
 
+#[derive(Debug)]
 pub enum HttpMethod {
     GET,
     POST,
@@ -13,6 +14,7 @@ pub enum HttpMethod {
     OPTIONS,
 }
 
+#[derive(Debug)]
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub target: String,

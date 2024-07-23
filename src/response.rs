@@ -5,30 +5,70 @@ pub struct HttpResponse {
     pub status_code: usize,
     pub status_message: Option<String>,
     pub headers: HashMap<String, String>,
+    pub body: Option<String>,
 }
 
-impl HttpResponse {
-    pub fn ok() -> Self {
-        HttpResponse {
-            status_code: 200,
-            status_message: Some("OK".to_owned()),
-            headers: HashMap::default(),
-        }
+pub struct HttpResponseBuilder {
+    _status_code: usize,
+    _status_message: Option<String>,
+    _headers: HashMap<String, String>,
+    _body: Option<String>,
+}
+
+#[allow(dead_code)]
+impl HttpResponseBuilder {
+    pub fn status(mut self: Self, code: usize, message: Option<impl AsRef<str>>) -> Self {
+        self._status_code = code;
+        self._status_message = message.map(|message| message.as_ref().into());
+
+        self
     }
 
-    pub fn bad_request(status_message: impl AsRef<str>) -> Self {
-        HttpResponse {
-            status_code: 400,
-            status_message: Some(status_message.as_ref().to_owned()),
-            headers: HashMap::default(),
-        }
+    pub fn header(
+        mut self: Self,
+        header_name: impl AsRef<str>,
+        header_value: impl AsRef<str>,
+    ) -> Self {
+        self._headers
+            .insert(header_name.as_ref().into(), header_value.as_ref().into());
+
+        self
     }
 
-    pub fn not_found() -> Self {
+    pub fn body(mut self: Self, body: impl AsRef<str>) -> Self {
+        self._body = Some(body.as_ref().into());
+
+        self
+    }
+
+    pub fn build(mut self: Self) -> HttpResponse {
+        if self._body.is_some() {
+            let content_length = &self._body.as_ref().unwrap().len();
+            self._headers
+                .insert("Content-Length".into(), content_length.to_string());
+        }
+
+        if self._headers.get("Content-Type").is_none() {
+            self._headers
+                .insert("Content-Type".into(), "text/plain".into());
+        }
+
         HttpResponse {
-            status_code: 404,
-            status_message: Some("Not Found".to_owned()),
-            headers: HashMap::default(),
+            status_code: self._status_code,
+            status_message: self._status_message,
+            headers: self._headers,
+            body: self._body,
+        }
+    }
+}
+
+impl Default for HttpResponseBuilder {
+    fn default() -> Self {
+        HttpResponseBuilder {
+            _status_code: 200,
+            _status_message: None,
+            _headers: HashMap::default(),
+            _body: None,
         }
     }
 }
