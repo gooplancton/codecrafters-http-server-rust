@@ -1,5 +1,6 @@
 mod handler;
 mod response;
+mod request;
 use std::net::TcpListener;
 
 use handler::handler;
