@@ -1,4 +1,8 @@
+mod handler;
+mod response;
 use std::net::TcpListener;
+
+use handler::handler;
 
 fn main() {
     println!("Logs from your program will appear here!");
@@ -7,8 +11,8 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(_stream) => {
-                println!("accepted new connection");
+            Ok(mut stream) => {
+                handler(&mut stream);
             }
             Err(e) => {
                 println!("error: {}", e);
