@@ -1,4 +1,8 @@
-use std::{collections::HashMap, io::{BufRead, BufReader, Read}, net::TcpStream};
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader},
+    net::TcpStream,
+};
 
 pub enum HttpMethod {
     GET,
@@ -42,19 +46,29 @@ impl HttpRequestBuilder {
             Some("DELETE") => Ok(HttpMethod::DELETE),
             Some("HEAD") => Ok(HttpMethod::HEAD),
             Some("OPTIONS") => Ok(HttpMethod::OPTIONS),
-            _ => Err(HttpRequestParsingError("Invalid HTTP verb".to_string())),
+            None => Err(HttpRequestParsingError("Missing HTTP verb".to_string())),
+            Some(method) => Err(HttpRequestParsingError(format!(
+                "Invalid HTTP verb: {}",
+                method
+            ))),
         }?;
 
         let target = match segments.next() {
             Some(target) if target.starts_with("/") => Ok(target.to_string()),
-            _ => Err(HttpRequestParsingError(
-                "Invalid request target".to_string(),
+            Some(_) => Err(HttpRequestParsingError(
+                "Request target must start with /".to_string(),
+            )),
+            None => Err(HttpRequestParsingError(
+                "Missing request target".to_string(),
             )),
         }?;
 
         let version = segments.next();
-        if version != Some("HTTP/1.1") {
-            return Err(HttpRequestParsingError("Invalid HTTP version".to_string()));
+        if version != Some("HTTP/1.1\r\n") {
+            return Err(HttpRequestParsingError(format!(
+                "Invalid HTTP version or missing CRLF sequence: {}",
+                version.unwrap_or("")
+            )));
         }
 
         Ok(HttpRequestBuilder {
@@ -65,8 +79,13 @@ impl HttpRequestBuilder {
     }
 
     #[allow(dead_code)]
-    pub fn header(mut self: Self, header_name: impl AsRef<str>, header_value: impl AsRef<str>) -> Self {
-        self.headers.insert(header_name.as_ref().into(), header_value.as_ref().into());
+    pub fn header(
+        mut self: Self,
+        header_name: impl AsRef<str>,
+        header_value: impl AsRef<str>,
+    ) -> Self {
+        self.headers
+            .insert(header_name.as_ref().into(), header_value.as_ref().into());
 
         self
     }
@@ -75,7 +94,7 @@ impl HttpRequestBuilder {
         HttpRequest {
             method: self.method,
             target: self.target,
-            headers: self.headers
+            headers: self.headers,
         }
     }
 }
@@ -89,7 +108,9 @@ impl HttpRequestReader for TcpStream {
         let mut reader = BufReader::new(self);
 
         let mut request_line = String::new();
-        reader.read_line(&mut request_line).map_err(|err| HttpRequestParsingError(err.to_string()))?;
+        reader
+            .read_line(&mut request_line)
+            .map_err(|err| HttpRequestParsingError(err.to_string()))?;
 
         let builder = HttpRequestBuilder::from_request_line(request_line)?;
 
