@@ -42,6 +42,8 @@ impl HTTPResponseWriter for TcpStream {
             bytes += self.write(&header.into_bytes())?;
         }
 
+        bytes += self.write(b"\r\n")?;
+
         Ok(bytes)
     }
 }
