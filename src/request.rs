@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Read, net::TcpStream};
+use std::{collections::HashMap, io::{BufRead, BufReader, Read}, net::TcpStream};
 
 pub enum HttpMethod {
     GET,
@@ -85,16 +85,12 @@ pub trait HttpRequestReader {
 }
 
 impl HttpRequestReader for TcpStream {
-    fn read_http_req(mut self: &Self) -> Result<HttpRequest, HttpRequestParsingError> {
-        let mut raw = String::new();
-        self.read_to_string(&mut raw)
-            .map_err(|err| HttpRequestParsingError(err.to_string()))?;
+    fn read_http_req(self: &Self) -> Result<HttpRequest, HttpRequestParsingError> {
+        let mut reader = BufReader::new(self);
 
-        let mut segments = raw.split("\r\n");
+        let mut request_line = String::new();
+        reader.read_line(&mut request_line).map_err(|err| HttpRequestParsingError(err.to_string()))?;
 
-        let request_line = segments
-            .next()
-            .ok_or(HttpRequestParsingError("Missing Request Line".into()))?;
         let builder = HttpRequestBuilder::from_request_line(request_line)?;
 
         Ok(builder.build())

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io::Write, net::TcpStream};
 
+#[derive(Debug)]
 pub struct HttpResponse {
     pub status_code: usize,
     pub status_message: Option<String>,
@@ -7,24 +8,15 @@ pub struct HttpResponse {
 }
 
 impl HttpResponse {
-    #[allow(dead_code)]
     pub fn ok() -> Self {
         HttpResponse {
             status_code: 200,
-            status_message: None,
+            status_message: Some("OK".to_owned()),
             headers: HashMap::default(),
         }
     }
 
-    pub fn ok_with_message(status_message: impl AsRef<str>) -> Self {
-        HttpResponse {
-            status_code: 200,
-            status_message: Some(status_message.as_ref().to_owned()),
-            headers: HashMap::default(),
-        }
-    }
-    
-    pub fn bad(status_message: impl AsRef<str>) -> Self {
+    pub fn bad_request(status_message: impl AsRef<str>) -> Self {
         HttpResponse {
             status_code: 400,
             status_message: Some(status_message.as_ref().to_owned()),
