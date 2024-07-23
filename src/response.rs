@@ -101,6 +101,10 @@ impl HttpResponseWriter for TcpStream {
 
         bytes += self.write(b"\r\n")?;
 
+        if res.body.is_some() {
+            bytes += self.write(&res.body.unwrap().into_bytes())?;
+        }
+
         Ok(bytes)
     }
 }
