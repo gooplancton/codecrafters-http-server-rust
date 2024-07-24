@@ -4,7 +4,7 @@ use std::{
     net::TcpStream,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum HttpMethod {
     GET,
     POST,

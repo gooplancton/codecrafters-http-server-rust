@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use crate::{
     request::HttpRequest,
     response::{HttpResponse, HttpResponseBuilder},
 };
 
-pub fn user_agent(req: HttpRequest) -> HttpResponse {
+pub fn user_agent(req: HttpRequest, _params: HashMap<String, String>) -> HttpResponse {
     HttpResponseBuilder::default()
         .status(200, Some("OK"))
         .body(

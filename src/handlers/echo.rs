@@ -1,11 +1,15 @@
+use std::collections::HashMap;
+
 use crate::{request::HttpRequest, response::{HttpResponse, HttpResponseBuilder}};
 
-pub fn echo(req: HttpRequest) -> HttpResponse {
-    let (_, val) = req.target.split_once("/echo/").unwrap();
+pub fn echo(_req: HttpRequest, params: HashMap<String, String>) -> HttpResponse {
+    let val = params.get("message");
 
-    HttpResponseBuilder::default()
-        .status(200, Some("OK"))
-        .body(val)
-        .build()
+    let mut builder = HttpResponseBuilder::default().status(200, Some("OK"));
+    if val.is_some() {
+        builder = builder.body(val.unwrap());
+    };
+
+    builder.build()
 }
 
