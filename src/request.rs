@@ -123,10 +123,10 @@ impl HttpRequestReader for TcpStream {
             }
 
             let (header_name, header_value) = header_line
-                .split_once(":")
+                .split_once(": ")
                 .ok_or(HttpRequestParsingError("Incorrect header format".into()))?;
 
-            let header_value = header_value.strip_suffix("\r\n").ok_or(HttpRequestParsingError("Incorrect header format".into()))?;
+            let header_value = header_value.strip_suffix("\r\n").unwrap_or(header_value);
             builder = builder.header(header_name, header_value);
         }
 
