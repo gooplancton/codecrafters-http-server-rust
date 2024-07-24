@@ -8,8 +8,8 @@ use crate::{
     response::{HttpResponseBuilder, HttpResponseWriter},
 };
 use router::{HttpRouter, SimpleRouter};
-use std::net::TcpListener;
-use std::{io::Write, net::TcpStream};
+use std::{net::TcpListener};
+use std::{io::Write, net::TcpStream, thread};
 
 pub fn dispatch(router: &impl HttpRouter, stream: &mut TcpStream) {
     let req = stream.read_http_req();
@@ -41,8 +41,11 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
-                dispatch(&router, &mut stream);
-                let _ = stream.flush();
+                let mut stream_handle = stream.try_clone().unwrap();
+                let _ = thread::spawn(move || {
+                    dispatch(&router.clone(), &mut stream_handle);
+                    let _ = stream.flush();
+                });
             }
             Err(e) => {
                 println!("error: {}", e);

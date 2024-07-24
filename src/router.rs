@@ -4,6 +4,7 @@ pub trait HttpRouter {
     fn get_handler(self: &Self, target: &impl AsRef<str>) -> Option<fn (request: HttpRequest) -> HttpResponse>;
 }
 
+#[derive(Clone, Copy)]
 pub struct SimpleRouter;
 
 impl HttpRouter for SimpleRouter {

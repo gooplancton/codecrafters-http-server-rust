@@ -135,7 +135,6 @@ impl HttpRequestReader for TcpStream {
                 break;
             }
 
-            dbg!(&header_line);
             let (header_name, header_value) = header_line
                 .split_once(": ")
                 .ok_or(HttpRequestParsingError("Incorrect header format".into()))?;
