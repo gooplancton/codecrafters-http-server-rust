@@ -1,18 +1,20 @@
 use std::{collections::HashMap, io::Write, net::TcpStream};
 
+use bytes::Bytes;
+
 #[derive(Debug)]
 pub struct HttpResponse {
     pub status_code: usize,
     pub status_message: Option<String>,
     pub headers: HashMap<String, String>,
-    pub body: Option<String>,
+    pub body: Option<Bytes>,
 }
 
 pub struct HttpResponseBuilder {
     _status_code: usize,
     _status_message: Option<String>,
     _headers: HashMap<String, String>,
-    _body: Option<String>,
+    _body: Option<Bytes>,
 }
 
 #[allow(dead_code)]
@@ -35,8 +37,9 @@ impl HttpResponseBuilder {
         self
     }
 
-    pub fn body(mut self: Self, body: impl AsRef<str>) -> Self {
-        self._body = Some(body.as_ref().into());
+    pub fn body(mut self: Self, body: impl Into<Bytes>) -> Self {
+        let body: Bytes = body.into();
+        self._body = Some(body);
 
         self
     }
@@ -102,7 +105,8 @@ impl HttpResponseWriter for TcpStream {
         bytes += self.write(b"\r\n")?;
 
         if res.body.is_some() {
-            bytes += self.write(&res.body.unwrap().into_bytes())?;
+            let body = res.body.unwrap();
+            bytes += self.write(&body)?;
         }
 
         Ok(bytes)

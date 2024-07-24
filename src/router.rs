@@ -11,7 +11,25 @@ pub trait HttpRouter {
     fn dispatch(self: &Self, req: HttpRequest) -> HttpResponse;
 }
 
-type HandlerInner = fn(request: HttpRequest, params: HashMap<String, String>) -> HttpResponse;
+#[derive(Debug)]
+pub struct HttpError {
+    status_code: usize,
+    status_message: Option<String>,
+}
+
+impl HttpError {
+    pub fn new(status_code: usize, status_message: Option<impl AsRef<str>>) -> Self {
+        HttpError {
+            status_code,
+            status_message: status_message.map(|message| message.as_ref().to_owned()),
+        }
+    }
+}
+
+pub type HttpRequestParams = HashMap<String, String>;
+
+type HandlerInner =
+    fn(request: HttpRequest, params: HttpRequestParams) -> Result<HttpResponse, HttpError>;
 
 #[derive(Clone, Debug)]
 pub struct HttpRegexEndpoint {
@@ -35,7 +53,7 @@ impl HttpRegexEndpoint {
             path.push_str("\\/");
             if segment.starts_with(":") {
                 let segment = segment.strip_prefix(":").unwrap();
-                let capturing_group = format!("(?<{}>\\w+)", segment);
+                let capturing_group = format!("(?<{}>\\S+)", segment);
                 path.push_str(&capturing_group);
             } else {
                 path.push_str(segment);
@@ -82,7 +100,11 @@ impl HttpRouter for RegexRouter {
             if endpoint.method == req.method && endpoint.path.is_match(req.target.as_ref()) {
                 let params = self.extract_params(&endpoint.path, &req.target);
 
-                return (endpoint.handler)(req, params);
+                return (endpoint.handler)(req, params).unwrap_or_else(|err| {
+                    HttpResponseBuilder::default()
+                        .status(err.status_code, err.status_message)
+                        .build()
+                });
             }
         }
 
@@ -91,4 +113,3 @@ impl HttpRouter for RegexRouter {
             .build()
     }
 }
-
