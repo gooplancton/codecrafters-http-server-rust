@@ -87,7 +87,7 @@ impl HttpRequestBuilder {
         header_value: impl AsRef<str>,
     ) -> Self {
         self.headers
-            .insert(header_name.as_ref().into(), header_value.as_ref().into());
+            .insert(header_name.as_ref().to_lowercase(), header_value.as_ref().into());
 
         self
     }
@@ -114,7 +114,21 @@ impl HttpRequestReader for TcpStream {
             .read_line(&mut request_line)
             .map_err(|err| HttpRequestParsingError(err.to_string()))?;
 
-        let builder = HttpRequestBuilder::from_request_line(request_line)?;
+        let mut builder = HttpRequestBuilder::from_request_line(request_line)?;
+
+        loop {
+            let header_line = String::new();
+            if header_line == "\r\n" {
+                break;
+            }
+
+            let (header_name, header_value) = header_line
+                .split_once(":")
+                .ok_or(HttpRequestParsingError("Incorrect header format".into()))?;
+
+            let header_value = header_value.strip_suffix("\r\n").ok_or(HttpRequestParsingError("Incorrect header format".into()))?;
+            builder = builder.header(header_name, header_value);
+        }
 
         Ok(builder.build())
     }
