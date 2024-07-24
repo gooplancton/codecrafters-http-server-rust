@@ -101,6 +101,7 @@ impl HttpRouter for RegexRouter {
                 let params = self.extract_params(&endpoint.path, &req.target);
 
                 return (endpoint.handler)(req, params).unwrap_or_else(|err| {
+                    dbg!(&err);
                     HttpResponseBuilder::default()
                         .status(err.status_code, err.status_message)
                         .build()

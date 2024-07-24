@@ -3,7 +3,7 @@ use crate::{
     response::{HttpResponse, HttpResponseBuilder},
     router::{HttpError, HttpRequestParams},
 };
-use std::fs;
+use std::{env, fs, path::{Path, PathBuf}};
 
 pub fn files(
     mut _req: HttpRequest,
@@ -13,11 +13,15 @@ pub fn files(
         .remove("filename")
         .ok_or(HttpError::new(400, Some("Missing filename")))?;
 
-    let contents = fs::read_to_string(filename)
-        .map_err(|err| HttpError::new(500, Some(err.to_string())))
+    let data_dir = env::var("DATA_DIR").unwrap();
+    let file_path = Path::join(&PathBuf::from(data_dir), filename);
+
+    let contents = fs::read_to_string(file_path)
+        .map_err(|_err| HttpError::new(404, Some("Not Found")))
         .map(|contents| contents.bytes().collect::<Vec<_>>())?;
 
     let res = HttpResponseBuilder::default()
+        .status(200, Some("OK"))
         .header("Content-Type", "application/octet-stream")
         .body(contents)
         .build();
