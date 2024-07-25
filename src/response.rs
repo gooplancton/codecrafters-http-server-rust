@@ -1,7 +1,8 @@
-use std::{collections::HashMap, io::Write, net::TcpStream};
 use crate::shared::HttpEncodingScheme;
+use std::{collections::HashMap, io::Write, net::TcpStream};
 
 use bytes::Bytes;
+use libdeflater::{CompressionLvl, Compressor};
 
 #[derive(Debug)]
 pub struct HttpResponse {
@@ -43,7 +44,8 @@ impl HttpResponseBuilder {
     pub fn encode(mut self: Self, accepted_schemes: Vec<HttpEncodingScheme>) -> Self {
         if accepted_schemes.contains(&HttpEncodingScheme::Gzip) {
             self._encoding = HttpEncodingScheme::Gzip;
-            self._headers.insert("content-encoding".into(), "gzip".into());
+            self._headers
+                .insert("content-encoding".into(), "gzip".into());
         }
 
         self
@@ -78,7 +80,13 @@ impl HttpResponseBuilder {
 
         body = match self._encoding {
             HttpEncodingScheme::None => body,
-            HttpEncodingScheme::Gzip => body // TODO: gzip_encode(body),
+            HttpEncodingScheme::Gzip => {
+                let (new_content_length, new_body) = gzip_encode(*content_length, body);
+                self._headers
+                    .insert("content-length".into(), new_content_length.to_string());
+
+                new_body
+            }
         };
 
         return HttpResponse {
@@ -138,6 +146,13 @@ impl HttpResponseWriter for TcpStream {
     }
 }
 
-fn gzip_encode(payload: impl Into<Bytes>) -> Bytes {
-    todo!()
+fn gzip_encode(content_length: usize, payload: impl Into<Bytes>) -> (usize, Bytes) {
+    let mut decompressor = Compressor::new(CompressionLvl::fastest());
+    let compression_bound = decompressor.gzip_compress_bound(content_length);
+    let mut out = vec![0u8; compression_bound];
+    let new_content_length = decompressor
+        .gzip_compress(&payload.into(), &mut out)
+        .unwrap();
+
+    (new_content_length, out.into())
 }

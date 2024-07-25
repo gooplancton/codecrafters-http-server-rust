@@ -108,6 +108,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "itertools",
+ "libdeflater",
  "nom",
  "pretty_assertions",
  "regex",
@@ -129,6 +130,24 @@ name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
+
+[[package]]
+name = "libdeflate-sys"
+version = "1.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "669ea17f9257bcb48c09c7ee4bef3957777504acffac557263e20c11001977bc"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "libdeflater"
+version = "1.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8dfd6424f7010ee0a3416f1d796d0450e3ad3ac237a237644f728277c4ded016"
+dependencies = [
+ "libdeflate-sys",
+]
 
 [[package]]
 name = "lock_api"
