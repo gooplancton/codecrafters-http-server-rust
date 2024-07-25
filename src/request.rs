@@ -1,8 +1,10 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
     net::TcpStream,
 };
+
+use bytes::Bytes;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum HttpMethod {
@@ -19,6 +21,7 @@ pub struct HttpRequest {
     pub method: HttpMethod,
     pub target: String,
     pub headers: HashMap<String, String>,
+    pub body: Option<Bytes>,
 }
 
 #[derive(Debug)]
@@ -30,10 +33,12 @@ impl HttpRequestParsingError {
     }
 }
 
+#[derive(Debug)]
 pub struct HttpRequestBuilder {
-    method: HttpMethod,
-    target: String,
-    headers: HashMap<String, String>,
+    _method: HttpMethod,
+    _target: String,
+    _headers: HashMap<String, String>,
+    _body: Option<Bytes>,
 }
 
 impl HttpRequestBuilder {
@@ -74,9 +79,10 @@ impl HttpRequestBuilder {
         }
 
         Ok(HttpRequestBuilder {
-            method,
-            target,
-            headers: HashMap::default(),
+            _method: method,
+            _target: target,
+            _headers: HashMap::default(),
+            _body: None,
         })
     }
 
@@ -86,7 +92,7 @@ impl HttpRequestBuilder {
         header_name: impl AsRef<str>,
         header_value: impl AsRef<str>,
     ) -> Self {
-        self.headers.insert(
+        self._headers.insert(
             header_name.as_ref().to_lowercase(),
             header_value.as_ref().into(),
         );
@@ -94,11 +100,18 @@ impl HttpRequestBuilder {
         self
     }
 
+    pub fn body(mut self: Self, body: impl Into<Bytes>) -> Self {
+        self._body = Some(body.into());
+
+        self
+    }
+
     pub fn build(self: Self) -> HttpRequest {
         HttpRequest {
-            method: self.method,
-            target: self.target,
-            headers: self.headers,
+            method: self._method,
+            target: self._target,
+            headers: self._headers,
+            body: self._body,
         }
     }
 }
@@ -118,6 +131,7 @@ impl HttpRequestReader for TcpStream {
 
         let mut builder = HttpRequestBuilder::from_request_line(request_line)?;
 
+        let mut content_length = 0;
         loop {
             let mut header_line = String::new();
             reader
@@ -139,8 +153,25 @@ impl HttpRequestReader for TcpStream {
                 .split_once(": ")
                 .ok_or(HttpRequestParsingError("Incorrect header format".into()))?;
 
+            let header_name = header_name.to_lowercase();
             let header_value = header_value.strip_suffix("\r\n").unwrap_or(header_value);
+
+            if header_name == "content-length" {
+                content_length = str::parse::<usize>(header_value)
+                    .map_err(|_| HttpRequestParsingError("Invalid content-length header".into()))?;
+            }
+
             builder = builder.header(header_name, header_value);
+        }
+
+        if content_length > 0 {
+            let mut body = vec![0u8; content_length];
+
+            reader
+                .read_exact(&mut body)
+                .map_err(|err| HttpRequestParsingError(err.to_string()))?;
+
+            builder = builder.body(body);
         }
 
         Ok(builder.build())

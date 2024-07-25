@@ -6,5 +6,5 @@ mod files;
 pub use home::home;
 pub use echo::echo;
 pub use user_agent::user_agent;
-pub use files::files;
+pub use files::{get_file, create_file};
 

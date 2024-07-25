@@ -4,7 +4,7 @@ mod response;
 mod router;
 
 use crate::{request::HttpRequestReader, response::HttpResponseWriter};
-use handlers::{echo, files, home, user_agent};
+use handlers::{create_file, echo, get_file, home, user_agent};
 use request::HttpMethod;
 use router::{HttpRegexEndpoint, HttpRouter, RegexRouter};
 use std::env::Args;
@@ -33,8 +33,7 @@ pub fn dispatch(router: impl HttpRouter, mut stream: TcpStream) {
 fn main() {
     println!("Logs from your program will appear here!");
 
-    let cwd = env::current_dir().unwrap();
-    let data_dir = get_data_dir_from_argv(env::args()).unwrap_or(cwd.to_string_lossy().to_string());
+    let data_dir = parse_directory_flag(env::args()).unwrap_or(env!("PWD").to_string());
     env::set_var("DATA_DIR", data_dir);
 
     let router = RegexRouter {
@@ -42,7 +41,8 @@ fn main() {
             HttpRegexEndpoint::new(HttpMethod::GET, "/", home),
             HttpRegexEndpoint::new(HttpMethod::GET, "/echo/:message", echo),
             HttpRegexEndpoint::new(HttpMethod::GET, "/user-agent", user_agent),
-            HttpRegexEndpoint::new(HttpMethod::GET, "/files/:filename", files),
+            HttpRegexEndpoint::new(HttpMethod::GET, "/files/:filename", get_file),
+            HttpRegexEndpoint::new(HttpMethod::POST, "/files/:filename", create_file),
         ],
     };
 
@@ -62,7 +62,7 @@ fn main() {
 }
 
 
-fn get_data_dir_from_argv(mut argv: Args) -> Option<String> {
+fn parse_directory_flag(mut argv: Args) -> Option<String> {
     while let Some(arg) = argv.next() {
         if arg == "--directory" {
             return argv.next();
