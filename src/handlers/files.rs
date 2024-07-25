@@ -12,6 +12,7 @@ pub fn get_file(
     mut _req: HttpRequest,
     mut params: HttpRequestParams,
 ) -> Result<HttpResponse, HttpError> {
+
     let filename = params
         .remove("filename")
         .ok_or(HttpError::new(400, Some("Missing filename")))?;
@@ -36,6 +37,7 @@ pub fn create_file(
     req: HttpRequest,
     mut params: HttpRequestParams,
 ) -> Result<HttpResponse, HttpError> {
+
     let filename = params
         .remove("filename")
         .ok_or(HttpError::new(400, Some("Missing filename")))?;
@@ -51,7 +53,6 @@ pub fn create_file(
 
     let res = HttpResponseBuilder::default()
         .status(201, Some("Created"))
-        .header("Content-Type", "application/octet-stream")
         .build();
 
     Ok(res)

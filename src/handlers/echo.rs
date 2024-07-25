@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub fn echo(
-    mut _req: HttpRequest,
+    req: HttpRequest,
     mut params: HashMap<String, String>,
 ) -> Result<HttpResponse, HttpError> {
     let val = params
@@ -16,6 +16,7 @@ pub fn echo(
 
     let builder = HttpResponseBuilder::default()
         .status(200, Some("OK"))
+        .encode(req.accepted_encodings)
         .body(val);
 
     Ok(builder.build())

@@ -2,6 +2,7 @@ mod handlers;
 mod request;
 mod response;
 mod router;
+mod shared;
 
 use crate::{request::HttpRequestReader, response::HttpResponseWriter};
 use handlers::{create_file, echo, get_file, home, user_agent};

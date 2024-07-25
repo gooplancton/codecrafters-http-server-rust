@@ -6,6 +6,8 @@ use std::{
 
 use bytes::Bytes;
 
+use crate::shared::HttpEncodingScheme;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum HttpMethod {
     GET,
@@ -22,6 +24,7 @@ pub struct HttpRequest {
     pub target: String,
     pub headers: HashMap<String, String>,
     pub body: Option<Bytes>,
+    pub accepted_encodings: Vec<HttpEncodingScheme>,
 }
 
 #[derive(Debug)]
@@ -39,6 +42,7 @@ pub struct HttpRequestBuilder {
     _target: String,
     _headers: HashMap<String, String>,
     _body: Option<Bytes>,
+    _accepted_encodings: Vec<HttpEncodingScheme>,
 }
 
 impl HttpRequestBuilder {
@@ -83,27 +87,30 @@ impl HttpRequestBuilder {
             _target: target,
             _headers: HashMap::default(),
             _body: None,
+            _accepted_encodings: vec![],
         })
     }
 
-    #[allow(dead_code)]
-    pub fn header(
-        mut self: Self,
-        header_name: impl AsRef<str>,
-        header_value: impl AsRef<str>,
-    ) -> Self {
+    pub fn header(self: &mut Self, header_name: impl AsRef<str>, header_value: impl AsRef<str>) {
         self._headers.insert(
             header_name.as_ref().to_lowercase(),
             header_value.as_ref().into(),
         );
-
-        self
     }
 
-    pub fn body(mut self: Self, body: impl Into<Bytes>) -> Self {
+    pub fn body(self: &mut Self, body: impl Into<Bytes>) {
         self._body = Some(body.into());
+    }
 
-        self
+    pub fn accept_encoding(self: &mut Self, encoding_name: impl AsRef<str>) {
+        let encoding_scheme = match encoding_name.as_ref() {
+            "gzip" => Some(HttpEncodingScheme::Gzip),
+            _ => None,
+        };
+
+        if let Some(encoding_scheme) = encoding_scheme {
+            self._accepted_encodings.push(encoding_scheme);
+        }
     }
 
     pub fn build(self: Self) -> HttpRequest {
@@ -112,6 +119,7 @@ impl HttpRequestBuilder {
             target: self._target,
             headers: self._headers,
             body: self._body,
+            accepted_encodings: self._accepted_encodings,
         }
     }
 }
@@ -159,9 +167,13 @@ impl HttpRequestReader for TcpStream {
             if header_name == "content-length" {
                 content_length = str::parse::<usize>(header_value)
                     .map_err(|_| HttpRequestParsingError("Invalid content-length header".into()))?;
+            } else if header_name == "accept-encoding" {
+                header_value
+                    .split(" ")
+                    .for_each(|encoding_name| builder.accept_encoding(encoding_name));
             }
 
-            builder = builder.header(header_name, header_value);
+            builder.header(header_name, header_value);
         }
 
         if content_length > 0 {
@@ -171,7 +183,7 @@ impl HttpRequestReader for TcpStream {
                 .read_exact(&mut body)
                 .map_err(|err| HttpRequestParsingError(err.to_string()))?;
 
-            builder = builder.body(body);
+            builder.body(body);
         }
 
         Ok(builder.build())
