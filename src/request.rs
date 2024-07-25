@@ -169,7 +169,7 @@ impl HttpRequestReader for TcpStream {
                     .map_err(|_| HttpRequestParsingError("Invalid content-length header".into()))?;
             } else if header_name == "accept-encoding" {
                 header_value
-                    .split(" ")
+                    .split(", ")
                     .for_each(|encoding_name| builder.accept_encoding(encoding_name));
             }
 
