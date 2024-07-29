@@ -6,7 +6,7 @@ use std::{
 
 use bytes::Bytes;
 
-use crate::shared::HttpEncodingScheme;
+use crate::shared::{HttpEncodingScheme, HttpHeaders};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum HttpMethod {
@@ -18,11 +18,38 @@ pub enum HttpMethod {
     OPTIONS,
 }
 
+type HttpQueryParams = HashMap<String, String>;
+
+trait FromQueryString: Sized {
+    fn from_query_string(query_string: &str) -> Result<Self, HttpRequestParsingError>;
+}
+
+impl FromQueryString for HttpQueryParams {
+    fn from_query_string(query_string: &str) -> Result<Self, HttpRequestParsingError> {
+        let entries = query_string
+            .split("&")
+            .map(|tuple| {
+                tuple
+                    .split_once("=")
+                    .map(|(key, value)| (key.to_string(), value.to_string()))
+            })
+            .map(|split| {
+                split.ok_or(HttpRequestParsingError(
+                    "Incorrect query string format".into(),
+                ))
+            })
+            .collect::<Result<Vec<(String, String)>, HttpRequestParsingError>>()?;
+
+        Ok(HashMap::<String, String>::from_iter(entries))
+    }
+}
+
 #[derive(Debug)]
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub target: String,
-    pub headers: HashMap<String, String>,
+    pub headers: HttpHeaders,
+    pub query: Option<HttpQueryParams>,
     pub body: Option<Bytes>,
     pub accepted_encodings: Vec<HttpEncodingScheme>,
 }
@@ -40,7 +67,8 @@ impl HttpRequestParsingError {
 pub struct HttpRequestBuilder {
     _method: HttpMethod,
     _target: String,
-    _headers: HashMap<String, String>,
+    _headers: HttpHeaders,
+    _query: Option<HttpQueryParams>,
     _body: Option<Bytes>,
     _accepted_encodings: Vec<HttpEncodingScheme>,
 }
@@ -64,7 +92,7 @@ impl HttpRequestBuilder {
             ))),
         }?;
 
-        let target = match segments.next() {
+        let mut target_string = match segments.next() {
             Some(target) if target.starts_with("/") => Ok(target.to_string()),
             Some(_) => Err(HttpRequestParsingError(
                 "Request target must start with /".to_string(),
@@ -73,6 +101,13 @@ impl HttpRequestBuilder {
                 "Missing request target".to_string(),
             )),
         }?;
+
+        let mut target = target_string.clone();
+        let mut query: Option<HttpQueryParams> = None;
+        if let Some((new_target, query_string)) = &target_string.split_once("?") {
+            target = new_target.to_string();
+            query = Some(HttpQueryParams::from_query_string(&query_string)?);
+        }
 
         let version = segments.next();
         if version != Some("HTTP/1.1\r\n") {
@@ -85,17 +120,15 @@ impl HttpRequestBuilder {
         Ok(HttpRequestBuilder {
             _method: method,
             _target: target,
-            _headers: HashMap::default(),
+            _headers: HttpHeaders::default(),
+            _query: query,
             _body: None,
             _accepted_encodings: vec![],
         })
     }
 
     pub fn header(self: &mut Self, header_name: impl AsRef<str>, header_value: impl AsRef<str>) {
-        self._headers.insert(
-            header_name.as_ref().to_lowercase(),
-            header_value.as_ref().into(),
-        );
+        self._headers.insert(header_name, header_value);
     }
 
     pub fn body(self: &mut Self, body: impl Into<Bytes>) {
@@ -118,6 +151,7 @@ impl HttpRequestBuilder {
             method: self._method,
             target: self._target,
             headers: self._headers,
+            query: self._query,
             body: self._body,
             accepted_encodings: self._accepted_encodings,
         }

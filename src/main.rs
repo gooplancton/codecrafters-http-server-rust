@@ -5,7 +5,7 @@ mod router;
 mod shared;
 
 use crate::{request::HttpRequestReader, response::HttpResponseWriter};
-use handlers::{create_file, echo, get_file, home, user_agent};
+use handlers::{create_file, echo, get_file, home, query, user_agent};
 use request::HttpMethod;
 use router::{HttpRegexEndpoint, HttpRouter, RegexRouter};
 use std::env::Args;
@@ -44,6 +44,7 @@ fn main() {
             HttpRegexEndpoint::new(HttpMethod::GET, "/user-agent", user_agent),
             HttpRegexEndpoint::new(HttpMethod::GET, "/files/:filename", get_file),
             HttpRegexEndpoint::new(HttpMethod::POST, "/files/:filename", create_file),
+            HttpRegexEndpoint::new(HttpMethod::GET, "/query/:query_param", query),
         ],
     };
 
